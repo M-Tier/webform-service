@@ -1,0 +1,16 @@
+{
+  "extends": ["config:recommended"],
+  "minimumReleaseAge": "14 days",
+  "schedule": ["every weekday"],
+  "ignoreTests": true,
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "matchCategories": ["security"],
+      "minimumReleaseAge": "0 days"
+    }
+  ]
+}
