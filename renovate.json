@@ -2,15 +2,24 @@
   "extends": ["config:recommended"],
   "minimumReleaseAge": "14 days",
   "schedule": ["every weekday"],
-  "ignoreTests": true,
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 10,
   "packageRules": [
     {
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": true
     },
     {
-      "matchCategories": ["security"],
-      "minimumReleaseAge": "0 days"
+      "matchUpdateTypes": ["major"],
+      "automerge": false
     }
-  ]
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "minimumReleaseAge": null,
+    "schedule": ["at any time"],
+    "prHourlyLimit": 0,
+    "labels": ["security"]
+  },
+  "osvVulnerabilityAlerts": true
 }

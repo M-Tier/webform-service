@@ -1,12 +1,14 @@
-name: webform-service-ci
+name: webform-service
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
-    branches: [ main ]
+    branches:
+      - main
     tags:
       - 'v*'
-  pull_request:
-    branches: [ main ]
 
 env:
   REGISTRY: ghcr.io
@@ -16,10 +18,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - name: Setup Go
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
@@ -37,10 +39,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - name: Setup Go
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
@@ -51,42 +53,38 @@ jobs:
         with:
           version: latest
 
-  build-and-push:
+  publish:
     runs-on: ubuntu-latest
     needs: [test, lint]
-
+    if: github.event_name == 'push'
     permissions:
       contents: write
       packages: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Determine next version
+        if: github.ref == 'refs/heads/main'
         id: version
         run: |
           git fetch --tags
-
           latest=$(git tag -l "v*" --sort=-v:refname | head -n1)
-
           if [ -z "$latest" ]; then
             latest="v0.0.0"
           fi
-
           version=${latest#v}
           IFS='.' read major minor patch <<< "$version"
           patch=$((patch+1))
-
           new="v$major.$minor.$patch"
-
           echo "new_tag=$new" >> $GITHUB_OUTPUT
           echo "Latest: $latest"
           echo "Next: $new"
 
-      - name: Create git tag
+      - name: Tag commit
         if: github.ref == 'refs/heads/main'
         run: |
           git config user.name github-actions
@@ -94,28 +92,30 @@ jobs:
           git tag ${{ steps.version.outputs.new_tag }}
           git push origin ${{ steps.version.outputs.new_tag }}
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
+      - name: Extract image metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=${{ steps.version.outputs.new_tag }}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.new_tag }},enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=sha-,format=short
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+      - name: Build and push image
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
