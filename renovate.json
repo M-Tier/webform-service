@@ -1,12 +1,17 @@
 {
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
+  "timezone": "Europe/Berlin",
   "minimumReleaseAge": "14 days",
-  "schedule": ["every weekday"],
+  "schedule": ["before 6am on monday"],
+  "rebaseWhen": "conflicted",
   "prHourlyLimit": 0,
   "prConcurrentLimit": 10,
   "packageRules": [
     {
       "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-minor-patch",
       "automerge": true
     },
     {
